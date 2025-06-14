@@ -2,6 +2,7 @@ local config = require("kiwi.config")
 local utils = require("kiwi.utils")
 local todo = require("kiwi.todo")
 local wiki = require("kiwi.wiki")
+local processed_wiki_paths = {}
 
 local M = {}
 
@@ -10,38 +11,6 @@ M.todo = todo
 M.utils = utils
 M.VERSION = "0.4.0"
 
-local create_buffer_keymaps = function(buffer_number)
-	local opts = { noremap = true, silent = true, nowait = true }
-
-	-- Visual mode keymaps for create or following links
-	vim.api.nvim_buf_set_keymap(
-		buffer_number,
-		"v",
-		"<CR>",
-		":'<,'>lua require('kiwi').create_or_open_wiki_file()<CR>",
-		opts
-	)
-	vim.api.nvim_buf_set_keymap(
-		buffer_number,
-		"v",
-		"<S-CR>",
-		":'<,'>lua require('kiwi').create_or_open_wiki_file('vsplit')<CR>",
-		opts
-	)
-	vim.api.nvim_buf_set_keymap(
-		buffer_number,
-		"v",
-		"<C-CR>",
-		":'<,'>lua require('kiwi').create_or_open_wiki_file('split')<CR>",
-		opts
-	)
-
-	-- Normal mode keymaps for following links
-	vim.api.nvim_buf_set_keymap(buffer_number, "n", "<CR>", ':lua require("kiwi").open_link()<CR>', opts)
-	vim.api.nvim_buf_set_keymap(buffer_number, "n", "<S-CR>", ':lua require("kiwi").open_link("vsplit")<CR>', opts)
-	vim.api.nvim_buf_set_keymap(buffer_number, "n", "<C-CR>", ':lua require("kiwi").open_link("split")<CR>', opts)
-	vim.api.nvim_buf_set_keymap(buffer_number, "n", "<Tab>", ':let @/="\\\\[.\\\\{-}\\\\]"<CR>nl', opts)
-end
 
 -- Normalizes a file path for reliable comparison on any OS.
 -- @param path (string) The file path to normalize.
@@ -82,11 +51,10 @@ local function setup_keymaps_for_wiki_file()
 	end
 
 	if is_in_wiki_dir then
-		create_buffer_keymaps(0)
+		wiki._create_buffer_keymaps(0)
 	end
 end
 
-local processed_wiki_paths = {}
 M.setup = function(opts)
 	utils.setup(opts, config)
 

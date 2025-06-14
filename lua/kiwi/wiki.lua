@@ -30,6 +30,38 @@ M._open_file = function(full_path, open_cmd)
 	local current_buffer_number = vim.api.nvim_get_current_buf()
 end
 
+M._create_buffer_keymaps = function(buffer_number)
+	-- Helper function to set keymaps with descriptions cleanly.
+	local function set_keymap(mode, key, command, description)
+		vim.api.nvim_buf_set_keymap(buffer_number, mode, key, command, {
+			noremap = true,
+			silent = true,
+			nowait = true,
+			desc = "Kiwi: " .. description,
+		})
+	end
+
+	-- Visual mode keymaps for creating links from a selection
+	set_keymap("v", "<CR>", ":'<,'>lua require('kiwi').create_or_open_wiki_file()<CR>", "Create Link from Selection")
+	set_keymap(
+		"v",
+		"<S-CR>",
+		":'<,'>lua require('kiwi').create_or_open_wiki_file('vsplit')<CR>",
+		"Create Link from Selection (VSplit)"
+	)
+	set_keymap(
+		"v",
+		"<C-CR>",
+		":'<,'>lua require('kiwi').create_or_open_wiki_file('split')<CR>",
+		"Create Link from Selection (Split)"
+	)
+
+	-- Normal mode keymaps for following links
+	set_keymap("n", "<CR>", ':lua require("kiwi").open_link()<CR>', "Open Link Under Cursor")
+	set_keymap("n", "<S-CR>", ':lua require("kiwi").open_link("vsplit")<CR>', "Open Link Under Cursor (VSplit)")
+	set_keymap("n", "<C-CR>", ':lua require("kiwi").open_link("split")<CR>', "Open Link Under Cursor (Split)")
+	set_keymap("n", "<Tab>", ':let @/="\\\\[.\\\\{-}\\\\]"<CR>nl', "Jump to Next Link")
+end
 
 -- Private handler that finds a link under the cursor and delegates opening to _open_file.
 M._open_link_handler = function(open_cmd)
