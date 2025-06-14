@@ -46,6 +46,7 @@ local function setup_keymaps_for_wiki_file()
 
 		if normalized_current_path:find(dir_to_check, 1, true) == 1 then
 			is_in_wiki_dir = true
+            config.path = normalized_wiki_dir
 			break
 		end
 	end
