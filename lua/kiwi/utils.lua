@@ -2,18 +2,38 @@ local utils = {}
 
 -- Setup wiki folder
 utils.setup = function(opts, config)
-	if opts ~= nil then
+	if opts and #opts > 0 then
 		config.folders = opts
 	else
 		config.path = utils.get_wiki_path()
+		config.folders = nil -- Clear folders to ensure consistent state.
 	end
 	utils.ensure_directories(config)
 end
 
-local create_dirs = function(wiki_path)
-	local path = vim.fs.joinpath(vim.loop.os_homedir(), wiki_path)
-	vim.uv.fs_mkdir(path, 448)
+-- Resolves a path string from the config into a full, absolute path.
+-- @param path_str (string): The path from the configuration (e.g., "wiki" or "~/notes/wiki").
+-- @return (string): The resolved absolute path.
+local resolve_path = function(path_str)
+	if not path_str or path_str == "" then
+		return nil
+	end
+
+	local expanded_path = vim.fn.expand(path_str)
+
+	if vim.fn.isdirectory(expanded_path) == 1 then
+		return expanded_path
+	end
+
+	expanded_path = vim.fs.joinpath(vim.loop.os_homedir(), path_str)
+	if vim.fn.isdirectory(expanded_path) == 1 then
+	else
+		pcall(vim.fn.mkdir, expanded_path, "p")
+		vim.notify("  " .. expanded_path .. " is created.", vim.log.levels.WARN)
+	end
+	return expanded_path
 end
+
 
 -- Get the default Wiki folder path
 utils.get_wiki_path = function()
@@ -25,10 +45,10 @@ end
 utils.ensure_directories = function(config)
 	if config.folders ~= nil then
 		for _, props in ipairs(config.folders) do
-			create_dirs(props.path)
+			props.path = resolve_path(props.path)
 		end
 	else
-		create_dirs(config.path)
+		config.path = resolve_path(config.path)
 	end
 end
 
@@ -79,41 +99,60 @@ utils._is_cursor_on_file = function(cursor, file, match_start, match_end)
 	end
 end
 
-utils.choose_wiki = function(folders)
-	local path = ""
-	local list = {}
-	for i, props in pairs(folders) do
-		list[i] = props.name
+-- Prompts the user to select a wiki from a list and executes a callback with the result.
+-- This function is asynchronous due to the nature of vim.ui.select.
+-- @param folders (table): A list of folder configuration tables.
+-- @param on_complete (function): A callback function to execute with the chosen path.
+--                                It receives one argument: the full path string, or nil if canceled.
+utils.choose_wiki = function(folders, on_complete)
+	-- Create a stable, indexed list of folder names for the UI select.
+	local items = {}
+	for _, props in ipairs(folders) do
+		table.insert(items, props.name)
 	end
-	vim.ui.select(list, {
+	vim.ui.select(items, {
 		prompt = "Select wiki:",
 		format_item = function(item)
-			return item
+			return "  " .. item
 		end,
 	}, function(choice)
+		if not choice then
+			vim.notify("Wiki selection cancelled.", vim.log.levels.INFO)
+			on_complete(nil) -- Signal completion without a selection.
+			return
+		end
+		-- Find the full path associated with the user's choice.
 		for _, props in pairs(folders) do
 			if props.name == choice then
-				path = vim.fs.joinpath(vim.loop.os_homedir(), props.path)
+				on_complete(props.path)
+				return
 			end
 		end
+		vim.notify("Error: Could not find path for selected wiki.", vim.log.levels.ERROR)
+		on_complete(nil)
 	end)
-    vim.notify(path)
-	return path
 end
 
--- Show prompt if multiple wiki path found or else choose default path
-utils.prompt_folder = function(config)
-	if config.folders ~= nil then
-		local count = 0
-		for _ in ipairs(config.folders) do
-			count = count + 1
+-- Determines the correct wiki path and executes a callback.
+-- If multiple wikis exist, it prompts the user. If one, it uses it directly.
+-- @param config (table): The plugin's configuration table.
+-- @param on_complete (function): The callback to execute with the final path.
+utils.prompt_folder = function(config, on_complete)
+	if not config.folders or #config.folders == 0 then
+		vim.notify("Kiwi: No wiki folders configured.", vim.log.levels.ERROR)
+		if on_complete then
+			on_complete(nil)
 		end
-		if count > 1 then
-			config.path = utils.choose_wiki(config.folders)
-		else
-			config.path = config.folders[1].path
-		end
+		return
+	end
+
+	local folder_count = #config.folders
+	if folder_count > 1 then
+		-- Asynchronous path: Prompt the user and the callback chain will handle the rest.
+		utils.choose_wiki(config.folders, on_complete)
+	else
+		-- Synchronous path: Only one folder, so we can proceed directly.
+		on_complete(config.folders[1].path)
 	end
 end
-
 return utils

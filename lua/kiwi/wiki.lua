@@ -85,21 +85,32 @@ M._open_link_handler = function(open_cmd)
 end
 
 M.open_wiki_index = function(name)
-	if config.folders ~= nil then
-		if name ~= nil then
-			for _, v in pairs(config.folders) do
-				if v.name == name then
-					config.path = v.path
+	local function open_index_from_path(wiki_path)
+		if not wiki_path then
+			return
+		end
+		config.path = wiki_path
+		local wiki_index_path = vim.fs.joinpath(config.path, "index.md")
+		M._open_file(wiki_index_path)
+	end
+
+	if config.folders then
+		if name then
+			-- User specified a wiki name directly, find it and proceed.
+			local found_path = nil
+			for _, props in ipairs(config.folders) do
+				if props.name == name then
+					found_path = props.path
+					break
 				end
 			end
+			open_index_from_path(found_path) -- Open it (or do nothing if not found).
 		else
-			utils.prompt_folder(config)
+			utils.prompt_folder(config, open_index_from_path)
 		end
 	else
-		require("kiwi").setup()
+		open_index_from_path(config.path)
 	end
-	local wiki_index_path = vim.fs.joinpath(config.path, "index.md")
-	M._open_file(wiki_index_path)
 end
 
 -- Create a new Wiki entry in Journal folder on highlighting word and pressing <CR>
