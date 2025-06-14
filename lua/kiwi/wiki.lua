@@ -16,7 +16,6 @@ M._open_file = function(full_path, open_cmd)
 		if win_nr ~= -1 then
 			local win_id = vim.fn.win_getid(win_nr)
 			vim.api.nvim_set_current_win(win_id)
-			M._create_buffer_keymaps(buffer_number)
 			return
 		end
 	end
@@ -29,41 +28,8 @@ M._open_file = function(full_path, open_cmd)
 	end
 
 	local current_buffer_number = vim.api.nvim_get_current_buf()
-	M._create_buffer_keymaps(current_buffer_number)
 end
 
-M._create_buffer_keymaps = function(buffer_number)
-	local opts = { noremap = true, silent = true, nowait = true }
-
-	-- Visual mode keymaps for create or following links
-	vim.api.nvim_buf_set_keymap(
-		buffer_number,
-		"v",
-		"<CR>",
-		":'<,'>lua require('kiwi').create_or_open_wiki_file()<CR>",
-		opts
-	)
-	vim.api.nvim_buf_set_keymap(
-		buffer_number,
-		"v",
-		"<S-CR>",
-		":'<,'>lua require('kiwi').create_or_open_wiki_file('vsplit')<CR>",
-		opts
-	)
-	vim.api.nvim_buf_set_keymap(
-		buffer_number,
-		"v",
-		"<C-CR>",
-		":'<,'>lua require('kiwi').create_or_open_wiki_file('split')<CR>",
-		opts
-	)
-
-	-- Normal mode keymaps for following links
-	vim.api.nvim_buf_set_keymap(buffer_number, "n", "<CR>", ':lua require("kiwi").open_link()<CR>', opts)
-	vim.api.nvim_buf_set_keymap(buffer_number, "n", "<S-CR>", ':lua require("kiwi").open_link("vsplit")<CR>', opts)
-	vim.api.nvim_buf_set_keymap(buffer_number, "n", "<C-CR>", ':lua require("kiwi").open_link("split")<CR>', opts)
-	vim.api.nvim_buf_set_keymap(buffer_number, "n", "<Tab>", ':let @/="\\\\[.\\\\{-}\\\\]"<CR>nl', opts)
-end
 
 -- Private handler that finds a link under the cursor and delegates opening to _open_file.
 M._open_link_handler = function(open_cmd)
