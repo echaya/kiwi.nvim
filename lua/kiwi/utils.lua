@@ -39,15 +39,14 @@ end
 
 -- Get the default Wiki folder path
 utils.get_wiki_path = function()
-	local default_dir = vim.fs.joinpath(vim.loop.os_homedir(), "wiki")
-	return default_dir
+	return vim.fs.joinpath(vim.loop.os_homedir(), "wiki")
 end
 
 -- Create wiki folder
 utils.ensure_directories = function(config)
-	if config.folders ~= nil then
-		for _, props in ipairs(config.folders) do
-			props.path = resolve_path(props.path)
+	if config.folders then
+		for _, folder in ipairs(config.folders) do
+			folder.path = resolve_path(folder.path)
 		end
 	else
 		config.path = resolve_path(config.path)
@@ -120,10 +119,9 @@ utils.choose_wiki = function(folders, on_complete)
 	}, function(choice)
 		if not choice then
 			vim.notify("Wiki selection cancelled.", vim.log.levels.INFO)
-			on_complete(nil) -- Signal completion without a selection.
+			on_complete(nil)
 			return
 		end
-		-- Find the full path associated with the user's choice.
 		for _, props in pairs(folders) do
 			if props.name == choice then
 				on_complete(props.path)
@@ -148,13 +146,11 @@ utils.prompt_folder = function(config, on_complete)
 		return
 	end
 
-	local folder_count = #config.folders
-	if folder_count > 1 then
-		-- Asynchronous path: Prompt the user and the callback chain will handle the rest.
+	if #config.folders > 1 then
 		utils.choose_wiki(config.folders, on_complete)
 	else
-		-- Synchronous path: Only one folder, so we can proceed directly.
 		on_complete(config.folders[1].path)
 	end
 end
+
 return utils
