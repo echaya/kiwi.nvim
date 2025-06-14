@@ -61,13 +61,7 @@ M._create_buffer_keymaps = function(buffer_number)
 	set_keymap("n", "<S-CR>", ':lua require("kiwi").open_link("vsplit")<CR>', "Open Link Under Cursor (VSplit)")
 	set_keymap("n", "<C-CR>", ':lua require("kiwi").open_link("split")<CR>', "Open Link Under Cursor (Split)")
 	set_keymap("n", "<Tab>", ':let @/="\\\\[.\\\\{-}\\\\]"<CR>nl', "Jump to Next Link")
-    -- TODO to set an external function
-	set_keymap(
-		"n",
-		"<Backspace>",
-		':lua require("kiwi.wiki")._open_file(vim.fs.joinpath(require("kiwi.config").path, "index.md"))<cr>',
-		"Jump to Next Link"
-	)
+	set_keymap("n", "<Backspace>", ':lua require("kiwi.wiki").jump_to_index()<CR>', "Jump to Index")
 end
 
 -- Private handler that finds a link under the cursor and delegates opening to _open_file.
@@ -139,6 +133,16 @@ end
 
 M.open_link = function(open_cmd)
 	M._open_link_handler(open_cmd)
+end
+
+M.jump_to_index = function()
+	local root = vim.b[0].wiki_root
+	if root and root ~= "" then
+		local index_path = vim.fs.joinpath(root, "index.md")
+		M._open_file(index_path) -- Open in the current window
+	else
+		vim.notify("Kiwi: Could not determine wiki root for this buffer.", vim.log.levels.WARN)
+	end
 end
 
 return M

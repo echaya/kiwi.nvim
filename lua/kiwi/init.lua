@@ -6,11 +6,9 @@ local processed_wiki_paths = {}
 
 local M = {}
 
-
 M.todo = todo
 M.utils = utils
 M.VERSION = "0.4.0"
-
 
 -- Normalizes a file path for reliable comparison on any OS.
 -- @param path (string) The file path to normalize.
@@ -46,7 +44,7 @@ local function setup_keymaps_for_wiki_file()
 
 		if normalized_current_path:find(dir_to_check, 1, true) == 1 then
 			is_in_wiki_dir = true
-            config.path = normalized_wiki_dir
+			vim.b[0].wiki_root = normalized_wiki_dir
 			break
 		end
 	end
@@ -67,8 +65,8 @@ M.setup = function(opts)
 	if config.folders then
 		for _, folder in ipairs(config.folders) do
 			if folder.path then
-				local p = vim.fn.fnamemodify(folder.path, ":p")
-				table.insert(processed_wiki_paths, (normalize_path_for_comparison(p)))
+				local path = vim.fn.fnamemodify(folder.path, ":p")
+				table.insert(processed_wiki_paths, (normalize_path_for_comparison(path)))
 			end
 		end
 	end

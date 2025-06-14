@@ -108,8 +108,8 @@ end
 utils.choose_wiki = function(folders, on_complete)
 	-- Create a stable, indexed list of folder names for the UI select.
 	local items = {}
-	for _, props in ipairs(folders) do
-		table.insert(items, props.name)
+	for _, folder in ipairs(folders) do
+		table.insert(items, folder.name)
 	end
 	vim.ui.select(items, {
 		prompt = "Select wiki:",
@@ -122,9 +122,9 @@ utils.choose_wiki = function(folders, on_complete)
 			on_complete(nil)
 			return
 		end
-		for _, props in pairs(folders) do
-			if props.name == choice then
-				on_complete(props.path)
+		for _, folder in pairs(folders) do
+			if folder.name == choice then
+				on_complete(folder.path)
 				return
 			end
 		end
