@@ -19,21 +19,23 @@ local resolve_path = function(path_str)
 		return nil
 	end
 
-	local expanded_path = vim.fn.expand(path_str)
-
-	if vim.fn.isdirectory(expanded_path) == 1 then
-		return expanded_path
-	end
-
-	expanded_path = vim.fs.joinpath(vim.loop.os_homedir(), path_str)
-	if vim.fn.isdirectory(expanded_path) == 1 then
+	local path_to_resolve
+	if vim.fn.isabsolutepath(path_str) == 0 then
+		path_to_resolve = vim.fs.joinpath(vim.loop.os_homedir(), path_str)
 	else
-		pcall(vim.fn.mkdir, expanded_path, "p")
-		vim.notify("  " .. expanded_path .. " is created.", vim.log.levels.WARN)
+		path_to_resolve = path_str
 	end
+
+	local expanded_path = vim.fn.fnamemodify(path_to_resolve, ":p")
+
+	if vim.fn.isdirectory(expanded_path) ~= 1 then
+		pcall(vim.fn.mkdir, expanded_path, "p")
+		vim.notify("  " .. expanded_path .. " created.", vim.log.levels.INFO)
+	end
+
+	-- Always return the fully resolved, absolute path.
 	return expanded_path
 end
-
 
 -- Get the default Wiki folder path
 utils.get_wiki_path = function()
