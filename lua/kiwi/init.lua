@@ -33,23 +33,37 @@ local function setup_keymaps_for_wiki_file()
 	end
 	local current_file_path = vim.fn.fnamemodify(buf_path, ":p")
 	local normalized_current_path = normalize_path_for_comparison(current_file_path)
+	local current_filename = vim.fn.fnamemodify(buf_path, ":t"):lower()
 
-	local is_in_wiki_dir = false
-	for _, normalized_wiki_dir in ipairs(processed_wiki_paths) do
-		-- Ensure the wiki directory path ends with a slash for a clean "starts with" check.
-		local dir_to_check = normalized_wiki_dir
+	local matching_wikis = {}
+	for _, wiki_info in ipairs(processed_wiki_paths) do
+		local dir_to_check = wiki_info.normalized
 		if not dir_to_check:find("/$") then
 			dir_to_check = dir_to_check .. "/"
 		end
 
 		if normalized_current_path:find(dir_to_check, 1, true) == 1 then
-			is_in_wiki_dir = true
-			vim.b[0].wiki_root = normalized_wiki_dir
-			break
+			table.insert(matching_wikis, wiki_info)
 		end
 	end
 
-	if is_in_wiki_dir then
+	if #matching_wikis == 0 then
+		return
+	end
+
+	table.sort(matching_wikis, function(a, b)
+		return #a.normalized > #b.normalized
+	end)
+
+	local wiki_root_to_set = nil
+	if current_filename == "index.md" and #matching_wikis >= 2 then
+		wiki_root_to_set = matching_wikis[2].resolved
+	else
+		wiki_root_to_set = matching_wikis[1].resolved
+	end
+
+	if wiki_root_to_set then
+		vim.b[0].wiki_root = wiki_root_to_set
 		wiki._create_buffer_keymaps(0)
 	end
 end
@@ -59,14 +73,21 @@ M.setup = function(opts)
 
 	processed_wiki_paths = {}
 	if config.path and config.path ~= "" then
-		local p = vim.fn.fnamemodify(config.path, ":p")
-		table.insert(processed_wiki_paths, normalize_path_for_comparison(p))
+		local resolved_path = vim.fn.fnamemodify(config.path, ":p")
+		table.insert(processed_wiki_paths, {
+			resolved = resolved_path,
+			normalized = normalize_path_for_comparison(resolved_path),
+		})
 	end
 	if config.folders then
 		for _, folder in ipairs(config.folders) do
 			if folder.path then
-				local path = vim.fn.fnamemodify(folder.path, ":p")
-				table.insert(processed_wiki_paths, (normalize_path_for_comparison(path)))
+				-- The path from config should already be absolute via utils.ensure_directories
+				local resolved_path = vim.fn.fnamemodify(folder.path, ":p")
+				table.insert(processed_wiki_paths, {
+					resolved = resolved_path,
+					normalized = normalize_path_for_comparison(resolved_path),
+				})
 			end
 		end
 	end
