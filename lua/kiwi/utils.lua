@@ -101,7 +101,6 @@ utils._is_cursor_on_file = function(cursor, file, match_start, match_end)
 end
 
 -- Prompts the user to select a wiki from a list and executes a callback with the result.
--- This function is asynchronous due to the nature of vim.ui.select.
 -- @param folders (table): A list of folder configuration tables.
 -- @param on_complete (function): A callback function to execute with the chosen path.
 --                                It receives one argument: the full path string, or nil if canceled.
@@ -166,7 +165,6 @@ utils.find_nested_roots = function(search_path, index_filename)
 	-- The '**' pattern recursively searches all subdirectories at any depth.
 	local search_pattern = vim.fs.joinpath("**", index_filename)
 	-- The third 'true' enables list output, the second 'true' handles path separators. (Note: Signature is path, expr, keep_empty, list)
-	-- Let's correct the call to be more robust: globpath({path}, {expr}, {keep_empty}, {list})
 	local index_files = vim.fn.globpath(search_path, search_pattern, false, true)
 
 	for _, file_path in ipairs(index_files) do
