@@ -61,7 +61,7 @@ M._create_buffer_keymaps = function(buffer_number)
 	set_keymap("n", "<S-CR>", ':lua require("kiwi").open_link("vsplit")<CR>', "Open Link Under Cursor (VSplit)")
 	set_keymap("n", "<C-CR>", ':lua require("kiwi").open_link("split")<CR>', "Open Link Under Cursor (Split)")
 	set_keymap("n", "<Tab>", ':let @/="\\\\[.\\\\{-}\\\\]"<CR>nl', "Jump to Next Link")
-	set_keymap("n", "<Backspace>", ':lua require("kiwi.wiki").jump_to_index()<CR>', "Jump to Index")
+	set_keymap("n", "<Backspace>", ':lua require("kiwi").jump_to_index()<CR>', "Jump to Index")
 end
 
 -- Private handler that finds a link under the cursor and delegates opening to _open_file.
