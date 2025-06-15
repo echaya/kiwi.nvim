@@ -27,7 +27,6 @@ M._open_file = function(full_path, open_cmd)
 		vim.api.nvim_win_set_buf(0, bn_to_open)
 	end
 
-	local current_buffer_number = vim.api.nvim_get_current_buf()
 end
 
 M._create_buffer_keymaps = function(buffer_number)

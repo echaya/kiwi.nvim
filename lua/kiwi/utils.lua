@@ -175,4 +175,14 @@ utils.find_nested_roots = function(search_path, index_filename)
 	return roots
 end
 
+-- Normalizes a file path for reliable comparison on any OS.
+-- @param path (string) The file path to normalize.
+-- @return (string) The normalized path.
+utils.normalize_path_for_comparison = function(path)
+	if not path then
+		return ""
+	end
+	return path:lower():gsub("\\", "/"):gsub("//", "/")
+end
+
 return utils
