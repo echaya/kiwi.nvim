@@ -71,29 +71,36 @@ end
 M.setup = function(opts)
 	utils.setup(opts, config)
 
-	processed_wiki_paths = {}
+	local manual_folders = {}
 	if config.path and config.path ~= "" then
-		local resolved_path = vim.fn.fnamemodify(config.path, ":p")
-		table.insert(processed_wiki_paths, {
-			resolved = resolved_path,
-			normalized = normalize_path_for_comparison(resolved_path),
-		})
+		table.insert(manual_folders, config.path)
 	end
 	if config.folders then
 		for _, folder in ipairs(config.folders) do
-			if folder.path then
-				-- The path from config should already be absolute via utils.ensure_directories
-				local resolved_path = vim.fn.fnamemodify(folder.path, ":p")
-				table.insert(processed_wiki_paths, {
-					resolved = resolved_path,
-					normalized = normalize_path_for_comparison(resolved_path),
-				})
-			end
+			table.insert(manual_folders, folder.path)
 		end
 	end
 
-	local kiwi_augroup = vim.api.nvim_create_augroup("Kiwi", { clear = true })
+	local all_roots_set = {}
+	for _, path in ipairs(manual_folders) do
+		local resolved_path = vim.fn.fnamemodify(path, ":p")
+		all_roots_set[resolved_path] = true
 
+		local nested_roots = utils.find_nested_roots(resolved_path, "index.md")
+		for _, nested_root in ipairs(nested_roots) do
+			all_roots_set[nested_root] = true
+		end
+	end
+
+	processed_wiki_paths = {}
+	for path, _ in pairs(all_roots_set) do
+		table.insert(processed_wiki_paths, {
+			resolved = path,
+			normalized = normalize_path_for_comparison(path),
+		})
+	end
+
+	local kiwi_augroup = vim.api.nvim_create_augroup("Kiwi", { clear = true })
 	vim.api.nvim_create_autocmd("BufEnter", {
 		group = kiwi_augroup,
 		pattern = "*.md",

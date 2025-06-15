@@ -153,4 +153,28 @@ utils.prompt_folder = function(config, on_complete)
 	end
 end
 
+-- Scans a base path recursively to find all directories containing an index file.
+-- @param search_path (string): The top-level directory to begin the scan from.
+-- @param index_filename (string): The name of the index file to locate.
+-- @return (table): A list of absolute paths to the directories containing the index file.
+utils.find_nested_roots = function(search_path, index_filename)
+	local roots = {}
+	if not search_path or search_path == "" then
+		return roots
+	end
+
+	-- The '**' pattern recursively searches all subdirectories at any depth.
+	local search_pattern = vim.fs.joinpath("**", index_filename)
+	-- The third 'true' enables list output, the second 'true' handles path separators. (Note: Signature is path, expr, keep_empty, list)
+	-- Let's correct the call to be more robust: globpath({path}, {expr}, {keep_empty}, {list})
+	local index_files = vim.fn.globpath(search_path, search_pattern, false, true)
+
+	for _, file_path in ipairs(index_files) do
+		local root_path = vim.fn.fnamemodify(file_path, ":p:h")
+		table.insert(roots, root_path)
+	end
+
+	return roots
+end
+
 return utils
