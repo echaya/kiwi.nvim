@@ -55,15 +55,16 @@ local function setup_keymaps_for_wiki_file()
 		return #a.normalized > #b.normalized
 	end)
 
-	local wiki_root_to_set = nil
+	local wiki_index_dir = nil
 	if current_filename == "index.md" and #matching_wikis >= 2 then
-		wiki_root_to_set = matching_wikis[2].resolved
+		wiki_index_dir = matching_wikis[2].resolved
 	else
-		wiki_root_to_set = matching_wikis[1].resolved
+		wiki_index_dir = matching_wikis[1].resolved
 	end
 
-	if wiki_root_to_set then
-		vim.b[0].wiki_root = wiki_root_to_set
+	if wiki_index_dir then
+		vim.b[0].wiki_root = wiki_index_dir
+        config.path = matching_wikis[1].resolved
 		wiki._create_buffer_keymaps(0)
 	end
 end
