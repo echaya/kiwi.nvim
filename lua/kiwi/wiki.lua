@@ -60,8 +60,12 @@ M._create_buffer_keymaps = function(buffer_number)
 	set_keymap("n", "<S-CR>", ':lua require("kiwi").open_link("vsplit")<CR>', "Open Link Under Cursor (VSplit)")
 	set_keymap("n", "<C-CR>", ':lua require("kiwi").open_link("split")<CR>', "Open Link Under Cursor (Split)")
 	-- TODO to set the search using vim.fn.search
-	set_keymap("n", "<Tab>", ':let @/="\\\\[.\\\\{-}\\\\]\\("<CR>nl:noh<cr>', "Jump to Next Link")
-	set_keymap("n", "<S-Tab>", ':let @/="\\\\[.\\\\{-}\\\\]\\("<CR>NNl:noh<cr>', "Jump to Prev Link")
+	local link_pattern = [[\(\[.\{-}\](.\{-})\)\|\(\[\[.\{-}\]\]\)]]
+	local search_cmd_next = string.format(":let @/=%s<CR>nl:noh<CR>", vim.fn.string(link_pattern))
+	local search_cmd_prev = string.format(":let @/=%s<CR>NNl:noh<CR>", vim.fn.string(link_pattern))
+	set_keymap("n", "<Tab>", search_cmd_next, "Jump to Next Link")
+	set_keymap("n", "<S-Tab>", search_cmd_prev, "Jump to Prev Link")
+
 	set_keymap("n", "<Backspace>", ':lua require("kiwi").jump_to_index()<CR>', "Jump to Index")
 	set_keymap("n", "<leader>wd", ':lua require("kiwi.wiki").delete_wiki()<CR>', "Delete Wiki Page")
 end
