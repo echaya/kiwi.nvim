@@ -63,6 +63,7 @@ M._create_buffer_keymaps = function(buffer_number)
 	set_keymap("n", "<Tab>", ':let @/="\\\\[.\\\\{-}\\\\]\\("<CR>nl:noh<cr>', "Jump to Next Link")
 	set_keymap("n", "<S-Tab>", ':let @/="\\\\[.\\\\{-}\\\\]\\("<CR>NNl:noh<cr>', "Jump to Prev Link")
 	set_keymap("n", "<Backspace>", ':lua require("kiwi").jump_to_index()<CR>', "Jump to Index")
+	set_keymap("n", "<leader>wd", ':lua require("kiwi.wiki").delete_wiki()<CR>', "Delete Wiki Page")
 end
 
 -- Private handler that finds a link under the cursor and delegates opening to _open_file.
@@ -142,7 +143,46 @@ M.jump_to_index = function()
 		local index_path = vim.fs.joinpath(root, "index.md")
 		M._open_file(index_path) -- Open in the current window
 	else
-		vim.notify("Kiwi: Could not determine wiki root for this buffer.", vim.log.levels.WARN)
+		vim.notify("Kiwi: Not inside a kiwi wiki. Cannot jump to index.", vim.log.levels.WARN)
+	end
+end
+
+-- Deletes the current wiki page and optionally cleans up links pointing to it.
+M.delete_wiki = function()
+	local root = vim.b[0].wiki_root
+	if not root or root == "" then
+		vim.notify("Kiwi: Not a wiki file.", vim.log.levels.WARN)
+		return
+	end
+
+	local file_path = vim.api.nvim_buf_get_name(0)
+	local file_name = vim.fn.fnamemodify(file_path, ":t")
+	local root_index_path = vim.fs.joinpath(root, "index.md")
+
+	if vim.fn.fnamemodify(file_path, ":p") == root_index_path then
+		vim.notify("Kiwi: Cannot delete the root index.md file.", vim.log.levels.ERROR)
+		return
+	end
+
+	local choice = vim.fn.confirm('Permanently delete "' .. file_name .. '"?', "&Yes\n&No")
+
+	if choice == 1 then -- User selected 'Yes'
+		local ok, err = pcall(os.remove, file_path)
+
+		if ok then
+			vim.notify('Kiwi: Deleted "' .. file_name .. '"', vim.log.levels.INFO)
+			vim.cmd("bdelete! " .. vim.fn.bufnr("%"))
+			M.jump_to_index()
+
+			-- Defer the cleanup function to run after the index has been opened.
+			vim.schedule(function()
+				utils.cleanup_broken_links()
+			end)
+		else
+			vim.notify("Kiwi: Error deleting file: " .. err, vim.log.levels.ERROR)
+		end
+	else
+		vim.notify("Kiwi: Delete operation canceled.", vim.log.levels.INFO)
 	end
 end
 
