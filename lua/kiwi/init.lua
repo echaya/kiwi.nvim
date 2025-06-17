@@ -1,15 +1,11 @@
 local config = require("kiwi.config")
 local utils = require("kiwi.utils")
-local todo = require("kiwi.todo")
 local wiki = require("kiwi.wiki")
 
 local M = {}
-M.VERSION = "0.4.0"
-M.todo = todo
-M.open_wiki_index = wiki.open_wiki_index
-M.create_or_open_wiki_file = wiki.create_or_open_wiki_file
-M.open_link = wiki.open_link
-M.jump_to_index = wiki.jump_to_index
+M.VERSION = "0.1.0"
+M.open_wiki = wiki.open_wiki
+M.open_wiki_in_new_tab = wiki.open_wiki_in_new_tab
 
 -- Checks if the current buffer is a markdown file within a configured wiki
 -- directory and, if so, applies the buffer-local keymaps.
@@ -61,18 +57,18 @@ local function setup_keymaps_for_wiki_file()
 end
 
 local process_wiki_paths = function()
-	local manual_folders = {}
+	local manual_wiki_dirs = {}
 	if config.path and config.path ~= "" then
-		table.insert(manual_folders, config.path)
+		table.insert(manual_wiki_dirs, config.path)
 	end
-	if config.folders then
-		for _, folder in ipairs(config.folders) do
-			table.insert(manual_folders, folder.path)
+	if config.wiki_dirs then
+		for _, wiki_dir in ipairs(config.wiki_dirs) do
+			table.insert(manual_wiki_dirs, wiki_dir.path)
 		end
 	end
 
 	local all_roots_set = {}
-	for _, path in ipairs(manual_folders) do
+	for _, path in ipairs(manual_wiki_dirs) do
 		local resolved_path = vim.fn.fnamemodify(path, ":p")
 		all_roots_set[resolved_path] = true
 

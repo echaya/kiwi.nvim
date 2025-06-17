@@ -1,12 +1,44 @@
 local utils = {}
 
--- Setup wiki folder
+-- Deeply merges two tables. `override` values take precedence over `base` values.
+-- @param base (table): The base table.
+-- @param override (table): The table with overrides.
+-- @return (table): The merged table.
+local function deep_merge(base, override)
+	local result = vim.deepcopy(base)
+	for k, v in pairs(override) do
+		if type(v) == "table" and type(result[k]) == "table" and not vim.islist(v) then -- Use modern vim.islist
+			result[k] = deep_merge(result[k], v)
+		else
+			result[k] = v
+		end
+	end
+	return result
+end
+
+-- Setup wiki configuration
 utils.setup = function(opts, config)
-	if opts and #opts > 0 then
-		config.folders = opts
+	opts = opts or {}
+
+	local local_config = deep_merge(config, opts)
+	for k, v in pairs(local_config) do
+		config[k] = v
+	end
+
+	-- handle flatten wiki_dirs
+	local user_dirs = config.wiki_dirs
+	if user_dirs and type(user_dirs) == "table" then
+		if user_dirs.path and user_dirs[1] == nil then
+			user_dirs = { user_dirs }
+		end
+	end
+
+	if user_dirs and type(user_dirs) == "table" and #user_dirs > 0 then
+		config.wiki_dirs = user_dirs
+		config.path = nil
 	else
 		config.path = utils.get_wiki_path()
-		config.folders = nil -- Clear folders to ensure consistent state.
+		config.wiki_dirs = nil
 	end
 	utils.ensure_directories(config)
 end
@@ -37,23 +69,22 @@ local resolve_path = function(path_str)
 	return expanded_path
 end
 
--- Get the default Wiki folder path
+-- Get the default wiki_dir path
 utils.get_wiki_path = function()
 	return vim.fs.joinpath(vim.loop.os_homedir(), "wiki")
 end
 
--- Create wiki folder
+-- Create wiki wiki_dir
 utils.ensure_directories = function(config)
-	if config.folders then
-		for _, folder in ipairs(config.folders) do
-			folder.path = resolve_path(folder.path)
+	if config.wiki_dirs then
+		for _, wiki_dir in ipairs(config.wiki_dirs) do
+			wiki_dir.path = resolve_path(wiki_dir.path)
 		end
 	else
 		config.path = resolve_path(config.path)
 	end
 end
 
----
 -- Process a raw link target string.
 local process_link_target = function(target)
 	if not target or not target:match("%S") then
@@ -68,7 +99,6 @@ local process_link_target = function(target)
 	return clean_target
 end
 
----
 -- Finds all valid link targets on a single line of text.
 local find_all_link_targets = function(line)
 	local targets = {}
@@ -90,11 +120,9 @@ local find_all_link_targets = function(line)
 	return targets
 end
 
----
 -- Checks if the cursor is on a link and returns the cleaned link target.
 utils.is_link = function(cursor, line)
-	cursor[2] = cursor[2] + 1 -- because vim counts from 0 but lua from 1
-
+	cursor[2] = cursor[2] + 1
 	-- Pattern for [title](file)
 	local pattern1 = "%[(.-)%]%(<?([^)>]+)>?%)"
 	local start_pos1 = 1
@@ -109,9 +137,7 @@ utils.is_link = function(cursor, line)
 			return process_link_target(file)
 		end
 	end
-
 	-- --- Check for [[file]] ---
-	-- This pattern has one capture.
 	local pattern2 = "%[%[(.-)%]%]"
 	local start_pos2 = 1
 	while true do
@@ -132,6 +158,7 @@ utils.is_link = function(cursor, line)
 	return nil
 end
 
+-- Clean up links that are broken
 utils.cleanup_broken_links = function()
 	local choice = vim.fn.confirm("Clean up all broken links from this page?", "&Yes\n&No")
 	if choice ~= 1 then
@@ -184,10 +211,10 @@ utils.cleanup_broken_links = function()
 end
 
 -- Prompts the user to select a wiki from a list and executes a callback with the result.
-utils.choose_wiki = function(folders, on_complete)
+utils.choose_wiki = function(wiki_dirs, on_complete)
 	local items = {}
-	for _, folder in ipairs(folders) do
-		table.insert(items, folder.name)
+	for _, wiki_dir in ipairs(wiki_dirs) do
+		table.insert(items, wiki_dir.name)
 	end
 	vim.ui.select(items, {
 		prompt = "Select wiki:",
@@ -200,9 +227,9 @@ utils.choose_wiki = function(folders, on_complete)
 			on_complete(nil)
 			return
 		end
-		for _, folder in pairs(folders) do
-			if folder.name == choice then
-				on_complete(folder.path)
+		for _, wiki_dir in pairs(wiki_dirs) do
+			if wiki_dir.name == choice then
+				on_complete(wiki_dir.path)
 				return
 			end
 		end
@@ -212,19 +239,19 @@ utils.choose_wiki = function(folders, on_complete)
 end
 
 -- Determines the correct wiki path and executes a callback.
-utils.prompt_folder = function(config, on_complete)
-	if not config.folders or #config.folders == 0 then
-		vim.notify("Kiwi: No wiki folders configured.", vim.log.levels.ERROR)
+utils.prompt_wiki_dir = function(config, on_complete)
+	if not config.wiki_dirs or #config.wiki_dirs == 0 then
+		vim.notify("Kiwi: No wiki wiki_dirs configured.", vim.log.levels.ERROR)
 		if on_complete then
 			on_complete(nil)
 		end
 		return
 	end
 
-	if #config.folders > 1 then
-		utils.choose_wiki(config.folders, on_complete)
+	if #config.wiki_dirs > 1 then
+		utils.choose_wiki(config.wiki_dirs, on_complete)
 	else
-		on_complete(config.folders[1].path)
+		on_complete(config.wiki_dirs[1].path)
 	end
 end
 
@@ -254,4 +281,27 @@ utils.normalize_path_for_comparison = function(path)
 	return path:lower():gsub("\\", "/"):gsub("//", "/")
 end
 
+---Register a global internal keymap that wraps `rhs` to be repeatable.
+---@param mode string|table keymap mode, see vim.keymap.set()
+---@param lhs string lhs of the internal keymap to be created, should be in the form `<Plug>(...)`
+---@param rhs function rhs of the keymap, see vim.keymap.set()
+---@return string The name of a registered internal `<Plug>(name)` keymap. Make sure you use { remap = true }.
+utils.make_repeatable = function(mode, lhs, rhs)
+	vim.validate({
+		mode = { mode, { "string", "table" } },
+		rhs = { rhs, "function" },
+		lhs = { lhs, "string" },
+	})
+	if not vim.startswith(lhs, "<Plug>") then
+		error("`lhs` should start with `<Plug>`, given: " .. lhs)
+	end
+	vim.keymap.set(mode, lhs, function()
+		rhs()
+		-- Then, safely attempt to set up the repeat.
+		pcall(vim.fn["repeat#set"], vim.api.nvim_replace_termcodes(lhs, true, true, true))
+	end)
+	return lhs
+end
+
 return utils
+
